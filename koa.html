@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Koa (koajs) -- 基于 Node.js 平台的下一代 web 开发框架 | Koa中文文档</title>
+    <meta name="keywords" content="koajs, koa, koa web framework, Node, generator, koa2">
+    <meta name="description" content="koa (koajs)是由 Express 原班人马打造的，致力于成为一个更小、更富有表现力、更健壮的 Web 框架。使用 koa 编写 web 应用，通过组合不同的 generator，可以免除重复繁琐的回调函数嵌套，并极大地提升错误处理的效率。">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/icons/css/slate.css">
+    <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/styles/github.min.css">
+    <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.10.0/highlight.min.js"></script>
+</head>
+
+<body>
+    <section id="top">
+        <div id="menu"><a id="toggle" href="#"><i class="icon-menu"></i></a>
+            <ul>
+                <li><a href="#introduction">简介</a></li>
+                <li><a href="#application">应用（Application）</a></li>
+                <li><a href="#context">上下文（Context）</a></li>
+                <li><a href="#request">请求（Request）</a></li>
+                <li><a href="#response">响应（Response）</a></li>
+                <li><a href="#links">链接（Links）</a></li>
+            </ul>
+        </div>
+        <div id="heading">
+            <div id="logo">Koa</div>
+            <div id="tagline">基于 Node.js 平台的下一代 web 开发框架</div>
+        </div>
+    </section>
+    <section>
+        <div class="content">
+            <h1 id="introduction">简介</h1>
+            <p>koa 是由 Express 原班人马打造的，致力于成为一个更小、更富有表现力、更健壮的 Web 框架。使用 koa 编写 web 应用，通过组合不同的 generator，可以免除重复繁琐的回调函数嵌套，并极大地提升错误处理的效率。koa
+                不在内核方法中绑定任何中间件，它仅仅提供了一个轻量优雅的函数库，使得编写 Web 应用变得得心应手。
+            </p>
+        </div>
+    </section>
+    <section>
+        <div class="content">
+            <h1 id="installation">安装</h1>
+            <p>Koa需要 node v7.6.0或更高版本来支持ES2015、异步方法</p>
+            <p>你可以安装自己支持的node版本。</p>
+            <pre><code class="lang-bash">$ nvm install 7
+$ npm i koa
+$ node my-koa-app.js</code></pre>
+            <h2 id="async-functions-with-babel">Babel异步函数</h2>
+            <p>在node &lt; 7.6的版本中使用<code>async</code> 函数, 我们推荐使用<a href="http://babeljs.io/docs/usage/require/">babel&#39;s require hook</a>.</p>
+            <pre><code class="lang-js">require(&#39;babel-core/register&#39;);
+// require the rest of the app that needs to be transpiled after the hook
+const app = require(&#39;./app&#39;);</code></pre>
+            <p>为了解析和转译异步函数，你应该至少有<a href="http://babeljs.io/docs/plugins/transform-async-to-generator/">transform-async-to-generator</a>                or <a href="http://babeljs.io/docs/plugins/transform-async-to-module-method/">transform-async-to-module-method</a>这2个插件。例如，在你的<code>.babelrc</code>文件中，应该有如下代码</p>
+            <pre><code class="lang-json">{
+  &quot;plugins&quot;: [&quot;transform-async-to-generator&quot;]
+}</code></pre>
+            <p>也可以使用<a href="http://babeljs.io/docs/plugins/preset-env/">env preset</a>并设置<code>&quot;node&quot;: &quot;current&quot;</code>来替代.</p>
+            <h1 id="application">应用</h1>
+            <p> Koa 应用是一个包含一系列中间件 generator 函数的对象。 这些中间件函数基于 request 请求以一个类似于栈的结构组成并依次执行。 Koa 类似于其他中间件系统（比如 Ruby's Rack 、Connect
+                等）， 然而 Koa 的核心设计思路是为中间件层提供高级语法糖封装，以增强其互用性和健壮性，并使得编写中间件变得相当有趣。</p>
+            <p> Koa 包含了像 content-negotiation（内容协商）、cache freshness（缓存刷新）、proxy support（代理支持）和 redirection（重定向）等常用任务方法。 与提供庞大的函数支持不同，Koa只包含很小的一部分，因为Koa并不绑定任何中间件。</p>
+            <p> 任何教程都是从 hello world 开始的，Koa也不例外^_^:</p>
+            <pre><code class="lang-js">const Koa = require(&#39;koa&#39;);
+const app = new Koa();
+
+app.use(async ctx =&gt; {
+  ctx.body = &#39;Hello World&#39;;
+});
+
+app.listen(3000);</code></pre>
+            <h2 id="cascading">级联</h2>
+            <p> Koa 的中间件通过一种更加传统（您也许会很熟悉）的方式进行级联，摒弃了以往 node 频繁的回调函数造成的复杂代码逻辑。 然而，使用异步函数，我们可以实现&quot;真正&quot; 的中间件。与之不同，当执行到 yield
+                next 语句时，Koa 暂停了该中间件，继续执行下一个符合请求的中间件('downstrem')，然后控制权再逐级返回给上层中间件('upstream')。</p>
+            <p>下面的例子在页面中返回 "Hello World"，然而当请求开始时，请求先经过 <code>x-response-time</code> 和 <code>logging</code> 中间件，并记录中间件执行起始时间。
+                然后将控制权交给 reponse 中间件。当一个中间件调用<code>next()</code>函数时，函数挂起并控件传递给定义的下一个中间件。在没有更多的中间件执行下游之后，堆栈将退出，并且每个中间件被恢复以执行其上游行为。</p>
+
+            <pre><code class="lang-js">const Koa = require(&#39;koa&#39;);
+const app = new Koa();
+
+// x-response-time
+
+app.use(async (ctx, next) =&gt; {
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  ctx.set(&#39;X-Response-Time&#39;, `${ms}ms`);
+});
+
+// logger
+
+app.use(async (ctx, next) =&gt; {
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  console.log(`${ctx.method} ${ctx.url} - ${ms}`);
+});
+
+// response
+
+app.use(async ctx =&gt; {
+  ctx.body = &#39;Hello World&#39;;
+});
+
+app.listen(3000);</code></pre>
+            <h2 id="settings">配置</h2>
+            <p> 应用配置是 app 实例属性，目前支持的配置项如下：</p>
+            <ul>
+                <li><code>app.env</code> 默认为 <strong>NODE_ENV</strong> or &quot;development&quot;</li>
+                <li><code>app.proxy</code> 如果为 true，则解析 "Host" 的 header 域，并支持 X-Forwarded-Host</li>
+                <li><code>app.subdomainOffset</code> 默认为2，表示 <code>.subdomains</code> 所忽略的字符偏移量。</li>
+            </ul>
+            <h2 id="app-listen-">app.listen(...)</h2>
+            <p> Koa 应用并非是一个 1-to-1 表征关系的 HTTP 服务器。 一个或多个Koa应用可以被挂载到一起组成一个包含单一 HTTP 服务器的大型应用群。</p>
+            <p>如下为一个绑定<code>3000</code>端口的简单 Koa 应用，其创建并返回了一个 HTTP 服务器，为 <code>Server#listen()</code> 传递指定参数（参数的详细文档请查看<a href="http://nodejs.org/api/http.html#http_server_listen_port_hostname_backlog_callback">nodejs.org</a>）。</p>
+
+            <pre><code class="lang-js">const Koa = require(&#39;koa&#39;);
+const app = new Koa();
+app.listen(3000);</code></pre>
+            <p> The <code>app.listen(...)</code> 实际上是以下代码的语法糖:</p>
+            <pre><code class="lang-js">const http = require(&#39;http&#39;);
+const Koa = require(&#39;koa&#39;);
+const app = new Koa();
+http.createServer(app.callback()).listen(3000);</code></pre>
+            <p> 这意味着您可以同时支持 HTTPS 和 HTTPS，或者在多个端口监听同一个应用。</p>
+            <pre><code class="lang-js">const http = require(&#39;http&#39;);
+const https = require(&#39;https&#39;);
+const Koa = require(&#39;koa&#39;);
+const app = new Koa();
+http.createServer(app.callback()).listen(3000);
+https.createServer(app.callback()).listen(3001);</code></pre>
+            <h2 id="app-callback-">app.callback()</h2>
+            <p>返回一个适合 <code>http.createServer()</code> 方法的回调函数用来处理请求。 您也可以使用这个回调函数将您的app挂载在 Connect/Express 应用上。</p>
+
+            <h2 id="app-use-function-">app.use(function)</h2>
+            <p> 为应用添加指定的中间件，详情请看 <a href="https://github.com/koajs/koa/wiki#middleware">Middleware</a></p>
+            <h2 id="app-keys-">app.keys=</h2>
+            <p> 设置签名cookie密钥。</p>
+            <p> 该密钥会被传递给<a href="https://github.com/jed/keygrip">KeyGrip</a>, 当然，您也可以自己生成
+                <code>KeyGrip</code>. 例如:</p>
+            <pre><code class="lang-js">app.keys = [&#39;im a newer secret&#39;, &#39;i like turtle&#39;];
+app.keys = new KeyGrip([&#39;im a newer secret&#39;, &#39;i like turtle&#39;], &#39;sha256&#39;);</code></pre>
+            <p> These keys may be rotated and are used when signing cookies with the <code>{ signed: true }</code> option:</p>
+            <pre><code class="lang-js">ctx.cookies.set(&#39;name&#39;, &#39;tobi&#39;, { signed: true });</code></pre>
+            <h2 id="app-context">app.context</h2>
+            <p><code>app.context</code>是从中创建<code>ctx</code>的原型。 可以通过编辑<code>app.context</code>向<code>ctx</code>添加其他属性。当需要将<code>ctx</code>添加到整个应用程序中使用的属性或方法时，这将会非常有用。这可能会更加有效（不需要中间件）和/或更简单（更少的<code>require()</code>），而不必担心更多的依赖于ctx，这可以被看作是一种反向模式。</p>
+
+            <p>例如，从<code>ctx</code>中添加对数据库的引用：</p>
+            <pre><code class="lang-js">app.context.db = db();
+
+app.use(async ctx =&gt; {
+  console.log(ctx.db);
+});</code></pre>
+            <p>注:</p>
+            <ul>
+                <li><code>ctx</code>上的很多属性是被限制的，在<code>app.context</code>只能通过使用<code>Object.defineProperty()</code>来编辑这些属性（不推荐）。可以在
+                    <a href="https://github.com/koajs/koa/issues/652">https://github.com/koajs/koa/issues/652</a>上查阅</li>
+                <li>已安装的APP沿用父级的<code>ctx</code>和配置. Thus, mounted apps are really just groups of middleware.</li>
+            </ul>
+            <h2 id="error-handling">错误处理</h2>
+            <p>默认情况下Koa会将所有错误信息输出到 stderr， 除非 <code>app.silent</code> 是 <code>true</code>.当<code>err.status</code>是<code>404</code>或者<code>err.expose</code>时，默认错误处理程序也不会输出错误。要执行自定义错误处理逻辑，如集中式日志记录，您可以添加一个&quot;错误&quot;事件侦听器：</p>
+            <pre><code class="lang-js">app.on(&#39;error&#39;, err =&gt; {
+  log.error(&#39;server error&#39;, err)
+});</code></pre>
+            <p> 如果错误发生在 请求/响应 环节，并且其不能够响应客户端时，<code>Contenxt</code> 实例也会被传递到 <code>error</code> 事件监听器的回调函数里。</p>
+            <pre><code class="lang-js">app.on(&#39;error&#39;, (err, ctx) =&gt; {
+  log.error(&#39;server error&#39;, err, ctx)
+});</code></pre>
+            <p> 当发生错误但仍能够响应客户端时（比如没有数据写到socket中），Koa会返回一个500错误(Internal Server Error)。 无论哪种情况，Koa都会生成一个应用级别的错误信息，以便实现日志记录等目的。</p>
+        </div>
+    </section>
+    <section>
+        <div class="content">
+            <h1 id="context">Context(上下文)</h1>
+            <p> Koa Context 将 node 的 <code>request</code> 和 <code>response</code> 对象封装在一个单独的对象里面，其为编写 web 应用和 API 提供了很多有用的方法。
+                这些操作在 HTTP 服务器开发中经常使用，因此其被添加在上下文这一层，而不是更高层框架中，因此将迫使中间件需要重新实现这些常用方法。</p>
+            <p> <code>context</code> 在每个 request 请求中被创建，在中间件中作为接收器(receiver)来引用，或者通过 <code>this</code> 标识符来引用：</p>
+            <pre><code class="lang-js">app.use(async ctx =&gt; {
+  ctx; // is the Context
+  ctx.request; // is a koa Request
+  ctx.response; // is a koa Response
+});</code></pre>
+            <p> 许多 context 的访问器和方法为了便于访问和调用，简单的委托给他们的 <code>ctx.request</code> 和 <code>ctx.response</code> 所对应的等价方法， 比如说 <code>ctx.type</code>                和 <code>ctx.length</code> 代理了 <code>response</code> 对象中对应的方法，<code>ctx.path</code> 和 <code>ctx.method</code>                代理了 <code>request</code> 对象中对应的方法。</p>
+            <h2 id="api">API</h2>
+            <p> <code>Context</code> 详细的方法和访问器。</p>
+            <h3 id="ctx-req">ctx.req</h3>
+            <p> Node 的 <code>request</code> 对象。</p>
+            <h3 id="ctx-res">ctx.res</h3>
+            <p> Node 的 <code>response</code> 对象。</p>
+            <p> Koa <em>不支持</em> 直接调用底层 res 进行响应处理。请避免使用以下 node 属性：</p>
+            <ul>
+                <li><code>res.statusCode</code></li>
+                <li><code>res.writeHead()</code></li>
+                <li><code>res.write()</code></li>
+                <li><code>res.end()</code></li>
+            </ul>
+            <h3 id="ctx-request">ctx.request</h3>
+            <p> Koa 的 <code>Request</code> 对象。</p>
+            <h3 id="ctx-response">ctx.response</h3>
+            <p> Koa 的 <code>Response</code> 对象。</p>
+            <h3 id="ctx-state">ctx.state</h3>
+            <p> 推荐的命名空间，用于通过中间件传递信息到前端视图</p>
+            <pre><code class="lang-js">ctx.state.user = await User.find(id);</code></pre>
+            <h3 id="ctx-app">ctx.app</h3>
+            <p> 应用实例引用。</p>
+            <h3 id="ctx-cookies-get-name-options-">ctx.cookies.get(name, [options])</h3>
+            <p> 获得 cookie 中名为 <code>name</code> 的值，<code>options</code> 为可选参数：</p>
+            <ul>
+                <li><code>signed</code> 如果为 true，表示请求时 cookie 需要进行签名。</li>
+            </ul>
+            <p>注意：Koa 使用了 Express 的 <a href="https://github.com/jed/cookies">cookies</a> 模块，options 参数只是简单地直接进行传递。</p>
+            <h3 id="ctx-cookies-set-name-value-options-">ctx.cookies.set(name, value, [options])</h3>
+            <p> 设置 cookie 中名为 <code>name</code> 的值，<code>options</code> 为可选参数：</p>
+            <ul>
+                <li><code>maxAge</code> 一个数字，表示 Date.now()到期的毫秒数</li>
+                <li><code>signed</code> 是否要做签名</li>
+                <li><code>expires</code> cookie有效期</li>
+                <li><code>path</code>cookie 的路径，默认为 <code>/'</code></li>
+                <li><code>domain</code> cookie 的域</li>
+                <li><code>secure</code> false 表示 cookie 通过 HTTP 协议发送，true 表示 cookie 通过 HTTPS 发送。</li>
+                <li><code>httpOnly</code> true 表示 cookie 只能通过 HTTP 协议发送</li>
+                <li><code>overwrite</code> 一个布尔值，表示是否覆盖以前设置的同名的Cookie（默认为false）。 如果为true，在设置此cookie时，将在同一请求中使用相同名称（不管路径或域）设置的所有Cookie将从Set-Cookie头部中过滤掉。</li>
+            </ul>
+            <p>注意：Koa 使用了 Express 的 <a href="https://github.com/jed/cookies">cookies</a> 模块，options 参数只是简单地直接进行传递。</p>
+            <h3 id="ctx-throw-status-msg-properties-">ctx.throw([status], [msg], [properties])</h3>
+            <p> 抛出包含 <code>.status</code> 属性的错误，默认为 <code>500</code>。该方法可以让 Koa 准确的响应处理状态。 Koa支持以下组合：
+            </p>
+            <pre><code class="lang-js">ctx.throw(400);
+ctx.throw(400, &#39;name required&#39;);
+ctx.throw(400, &#39;name required&#39;, { user: user });</code></pre>
+            <p> <code>this.throw('name required', 400)</code> 等价于：</p>
+            <pre><code class="lang-js">const err = new Error(&#39;name required&#39;);
+err.status = 400;
+err.expose = true;
+throw err;</code></pre>
+            <p> 注意：这些用户级错误被标记为 <code>err.expose</code>，其意味着这些消息被准确描述为对客户端的响应，而并非使用在您不想泄露失败细节的场景中。</p>
+            <p>您可以选择传递一个属性对象，该对象被合并到错误中，这对装饰机器友好错误非常有用，并且这些错误会被报给上层请求。</p>
+            <pre><code class="lang-js">ctx.throw(401, &#39;access_denied&#39;, { user: user });</code></pre>
+            <p>koa用 <a href="https://github.com/jshttp/http-errors">http-errors</a>来创建错误。</p>
+            <h3 id="ctx-assert-value-status-msg-properties-">ctx.assert(value, [status], [msg], [properties])</h3>
+            <p>当<code>!value</code>时， Helper 方法抛出一个类似<code>.throw()</code>的错误。 类似node&#39;s
+                <a href="http://nodejs.org/api/assert.html">assert()</a> 方法。
+            </p>
+            <pre><code class="lang-js">ctx.assert(ctx.state.user, 401, &#39;User not found. Please login!&#39;);</code></pre>
+            <p>koa 使用 <a href="https://github.com/jshttp/http-assert">http-assert</a> 来断言。</p>
+            <h3 id="ctx-respond">ctx.respond</h3>
+            <p> 为了避免使用 Koa 的内置响应处理功能，您可以直接赋值 <code>this.repond = false;</code>。如果您不想让 Koa 来帮助您处理 reponse，而是直接操作原生 <code>res</code>                对象，那么请使用这种方法。</p>
+            <p> 注意： 这种方式是不被 Koa 支持的。其可能会破坏 Koa 中间件和 Koa 本身的一些功能。其只作为一种 hack 的方式，并只对那些想要在 Koa 方法和中间件中使用传统 <code>fn(req, res)</code>                方法的人来说会带来便利。</p>
+            <h2 id="request-aliases">Request aliases</h2>
+            <p> 以下访问器和别名与 <a href="#request">Request</a> 等价：</p>
+            <ul>
+                <li><code>ctx.header</code></li>
+                <li><code>ctx.headers</code></li>
+                <li><code>ctx.method</code></li>
+                <li><code>ctx.method=</code></li>
+                <li><code>ctx.url</code></li>
+                <li><code>ctx.url=</code></li>
+                <li><code>ctx.originalUrl</code></li>
+                <li><code>ctx.origin</code></li>
+                <li><code>ctx.href</code></li>
+                <li><code>ctx.path</code></li>
+                <li><code>ctx.path=</code></li>
+                <li><code>ctx.query</code></li>
+                <li><code>ctx.query=</code></li>
+                <li><code>ctx.querystring</code></li>
+                <li><code>ctx.querystring=</code></li>
+                <li><code>ctx.host</code></li>
+                <li><code>ctx.hostname</code></li>
+                <li><code>ctx.fresh</code></li>
+                <li><code>ctx.stale</code></li>
+                <li><code>ctx.socket</code></li>
+                <li><code>ctx.protocol</code></li>
+                <li><code>ctx.secure</code></li>
+                <li><code>ctx.ip</code></li>
+                <li><code>ctx.ips</code></li>
+                <li><code>ctx.subdomains</code></li>
+                <li><code>ctx.is()</code></li>
+                <li><code>ctx.accepts()</code></li>
+                <li><code>ctx.acceptsEncodings()</code></li>
+                <li><code>ctx.acceptsCharsets()</code></li>
+                <li><code>ctx.acceptsLanguages()</code></li>
+                <li><code>ctx.get()</code></li>
+            </ul>
+            <h2 id="response-aliases">Response aliases</h2>
+            <p> 以下访问器和别名与 <a href="#response">Response</a> 等价：</p>
+            <ul>
+                <li><code>ctx.body</code></li>
+                <li><code>ctx.body=</code></li>
+                <li><code>ctx.status</code></li>
+                <li><code>ctx.status=</code></li>
+                <li><code>ctx.message</code></li>
+                <li><code>ctx.message=</code></li>
+                <li><code>ctx.length=</code></li>
+                <li><code>ctx.length</code></li>
+                <li><code>ctx.type=</code></li>
+                <li><code>ctx.type</code></li>
+                <li><code>ctx.headerSent</code></li>
+                <li><code>ctx.redirect()</code></li>
+                <li><code>ctx.attachment()</code></li>
+                <li><code>ctx.set()</code></li>
+                <li><code>ctx.append()</code></li>
+                <li><code>ctx.remove()</code></li>
+                <li><code>ctx.lastModified=</code></li>
+                <li><code>ctx.etag=</code></li>
+            </ul>
+        </div>
+    </section>
+    <section>
+        <div class="content">
+            <h1 id="request">请求(Request)</h1>
+            <p> Koa <code>Request</code> 对象是对 node 的 request 进一步抽象和封装，提供了日常 HTTP 服务器开发中一些有用的功能。</p>
+            <h2 id="api">API</h2>
+            <h3 id="request-header">request.header</h3>
+            <p> 请求头对象</p>
+            <h3 id="request-header-">request.header=</h3>
+            <p> 设置请求头对象</p>
+            <h3 id="request-headers">request.headers</h3>
+            <p> 请求头对象。等价于 <code>request.header</code>.</p>
+            <h3 id="request-headers-">request.headers=</h3>
+            <p> 设置请求头对象。 等价于<code>request.header=</code>.</p>
+            <h3 id="request-method">request.method</h3>
+            <p> 请求方法</p>
+            <h3 id="request-method-">request.method=</h3>
+            <p> 设置请求方法, 在实现中间件时非常有用，比如 <code>methodOverride()</code></p>
+            <h3 id="request-length">request.length</h3>
+            <p> 以数字的形式返回 request 的内容长度(Content-Length)，或者返回 <code>undefined</code>。</p>
+            <h3 id="request-url">request.url</h3>
+            <p> 获得请求url地址.</p>
+            <h3 id="request-url-">request.url=</h3>
+            <p> 设置请求地址，用于重写url地址时</p>
+            <h3 id="request-originalurl">request.originalUrl</h3>
+            <p> 获取请求原始地址</p>
+            <h3 id="request-origin">request.origin</h3>
+            <p> 获取URL原始地址, 包含 <code>protocol</code> 和 <code>host</code></p>
+            <pre><code class="lang-js">ctx.request.origin
+// =&gt; http://example.com</code></pre>
+            <h3 id="request-href">request.href</h3>
+            <p> 获取完整的请求URL, 包含 <code>protocol</code>, <code>host</code> 和 <code>url</code></p>
+            <pre><code class="lang-js">ctx.request.href;
+// =&gt; http://example.com/foo/bar?q=1</code></pre>
+            <h3 id="request-path">request.path</h3>
+            <p>获取请求路径名</p>
+            <h3 id="request-path-">request.path=</h3>
+            <p> 设置请求路径名并保留当前查询字符串</p>
+            <h3 id="request-querystring">request.querystring</h3>
+            <p> 获取查询参数字符串(url中?后面的部分)，不包含<code>?</code></p>
+            <h3 id="request-querystring-">request.querystring=</h3>
+            <p> 设置原始查询字符串</p>
+            <h3 id="request-search">request.search</h3>
+            <p> 获取查询参数字符串，包含<code>?</code></p>
+            <h3 id="request-search-">request.search=</h3>
+            <p> 设置原始查询字符串</p>
+            <h3 id="request-host">request.host</h3>
+            <p> 获取 host (hostname:port)。 当 <code>app.proxy</code> 设置为 <strong>true</strong> 时，支持 <code>X-Forwarded-Host</code></p>
+            <h3 id="request-hostname">request.hostname</h3>
+            <p> 获取 hostname。当 <code>app.proxy</code> 设置为 <strong>true</strong> 时，支持 <code>X-Forwarded-Host</code>。</p>
+            <p> 如果主机是IPv6, Koa 将解析转换为
+                <a href="https://nodejs.org/dist/latest-v8.x/docs/api/url.html#url_the_whatwg_url_api">WHATWG URL API</a>,
+                <em>注意</em> 这可能会影响性能</p>
+            <h3 id="request-url">request.URL</h3>
+            <p> 获取 WHATWG 解析的对象.</p>
+            <h3 id="request-type">request.type</h3>
+            <p> 获取请求 <code>Content-Type</code>，不包含像 "charset" 这样的参数。</p>
+            <pre><code class="lang-js">const ct = ctx.request.type;
+// =&gt; &quot;image/png&quot;</code></pre>
+            <h3 id="request-charset">request.charset</h3>
+            <p> 获取请求 charset，没有则返回 <code>undefined</code>:</p>
+            <pre><code class="lang-js">ctx.request.charset;
+// =&gt; &quot;utf-8&quot;</code></pre>
+            <h3 id="request-query">request.query</h3>
+            <p> 将查询参数字符串进行解析并以对象的形式返回，如果没有查询参数字字符串则返回一个空对象。注意：该方法不支持嵌套解析。</p>
+            <p>例如 &quot;color=blue&amp;size=small&quot;:</p>
+            <pre><code class="lang-js">{
+  color: &#39;blue&#39;,
+  size: &#39;small&#39;
+}</code></pre>
+            <h3 id="request-query-">request.query=</h3>
+            <p> 根据给定的对象设置查询参数字符串。 注意：该方法<em>不</em> 支持嵌套对象。</p>
+            <pre><code class="lang-js">ctx.query = { next: &#39;/login&#39; };</code></pre>
+            <h3 id="request-fresh">request.fresh</h3>
+            <p> 检查请求缓存是否 "fresh"(内容没有发生变化)。该方法用于在 <code>If-None-Match</code> / <code>ETag</code>, <code>If-Modified-Since</code>                和 <code>Last-Modified</code> 中进行缓存协调。当在 response headers 中设置一个或多个上述参数后，该方法应该被使用。</p>
+            <pre><code class="lang-js">// freshness check requires status 20x or 304
+ctx.status = 200;
+ctx.set(&#39;ETag&#39;, &#39;123&#39;);
+
+// cache is ok
+if (ctx.fresh) {
+  ctx.status = 304;
+  return;
+}
+
+// cache is stale
+// fetch new data
+ctx.body = await db.find(&#39;something&#39;);</code></pre>
+            <h3 id="request-stale">request.stale</h3>
+            <p> 与 <code>req.fresh</code> 相反。</p>
+            <h3 id="request-protocol">request.protocol</h3>
+            <p> 返回请求协议，"https" 或者 "http"。 当 <code>app.proxy</code> 设置为 <strong>true</strong> 时，支持 <code>X-Forwarded-Host</code>。</p>
+            <h3 id="request-secure">request.secure</h3>
+            <p> 简化版 <code>this.protocol == "https"</code>，用来检查请求是否通过 TLS 发送。</p>
+            <h3 id="request-ip">request.ip</h3>
+            <p> 请求远程地址。 当 <code>app.proxy</code> 设置为 <strong>true</strong> 时，支持 <code>X-Forwarded-Host</code>。</p>
+            <h3 id="request-ips">request.ips</h3>
+            <p> 当 <code>X-Forwarded-For</code> 存在并且 <code>app.proxy</code> 有效，将会返回一个有序（从 upstream 到 downstream）ip 数组。 否则返回一个空数组。
+            </p>
+            <h3 id="request-subdomains">request.subdomains</h3>
+            <p> 以数组形式返回子域名。</p>
+            <p> 子域名是在host中逗号分隔的主域名前面的部分。默认情况下，应用的域名假设为host中最后两部分。其可通过设置 <code>app.subdomainOffset</code> 进行更改。</p>
+            <p> 举例来说，如果域名是 "tobi.ferrets.example.com":</p>
+            <p> 如果没有设置 <code>app.subdomainOffset</code>，其 subdomains 为 <code>["ferrets", "tobi"]</code>。 如果设置 <code>app.subdomainOffset</code>                为3，其 subdomains 为 <code>["tobi"]</code>。</p>
+            <h3 id="request-is-types-">request.is(types...)</h3>
+            <p> 检查请求所包含的 "Content-Type" 是否为给定的 type 值。 如果没有 request body，返回 <code>undefined</code>。 如果没有 content type，或者匹配失败，返回
+                <code>false</code>。 否则返回匹配的 content-type。</p>
+            <pre><code class="lang-js">// With Content-Type: text/html; charset=utf-8
+ctx.is(&#39;html&#39;); // =&gt; &#39;html&#39;
+ctx.is(&#39;text/html&#39;); // =&gt; &#39;text/html&#39;
+ctx.is(&#39;text/*&#39;, &#39;text/html&#39;); // =&gt; &#39;text/html&#39;
+
+// When Content-Type is application/json
+ctx.is(&#39;json&#39;, &#39;urlencoded&#39;); // =&gt; &#39;json&#39;
+ctx.is(&#39;application/json&#39;); // =&gt; &#39;application/json&#39;
+ctx.is(&#39;html&#39;, &#39;application/*&#39;); // =&gt; &#39;application/json&#39;
+
+ctx.is(&#39;html&#39;); // =&gt; false</code></pre>
+            <p>比如说您希望保证只有图片发送给指定路由</p>
+            <pre><code class="lang-js">if (ctx.is(&#39;image/*&#39;)) {
+  // process
+} else {
+  ctx.throw(415, &#39;images only!&#39;);
+}</code></pre>
+            <h3 id="content-negotiation">Content Negotiation</h3>
+            <p> Koa <code>request</code> 对象包含 content negotiation 功能（由 <a href="http://github.com/expressjs/accepts">accepts</a>                和 <a href="https://github.com/federomero/negotiator">negotiator</a> 提供）：</p>
+            <ul>
+                <li><code>request.accepts(types)</code></li>
+                <li><code>request.acceptsEncodings(types)</code></li>
+                <li><code>request.acceptsCharsets(charsets)</code></li>
+                <li><code>request.acceptsLanguages(langs)</code></li>
+            </ul>
+            <p> 如果没有提供 types，将会返回<strong>所有的</strong>可接受类型。</p>
+            <p> 如果提供多种 types，将会返回最佳匹配类型。如果没有匹配上，则返回 <code>false</code>，您应该给客户端返回 <code>406 "Not Acceptable"</code>。</p>
+            <p> 为了防止缺少 accept headers 而导致可以接受任意类型，将会返回第一种类型。因此，您提供的类型顺序非常重要。</p>
+            <h3 id="request-accepts-types-">request.accepts(types)</h3>
+            <p> 检查给定的类型 <code>types(s)</code> 是否可被接受，当为 true 时返回最佳匹配，否则返回 <code>false</code>。<code>type</code> 的值可以是一个或者多个 mime
+                类型字符串。 比如 "application/json" 扩展名为 "json"，或者数组 <code>["json", "html", "text/plain"]</code>。</p>
+            <pre><code class="lang-js">// Accept: text/html
+ctx.accepts(&#39;html&#39;);
+// =&gt; &quot;html&quot;
+
+// Accept: text/*, application/json
+ctx.accepts(&#39;html&#39;);
+// =&gt; &quot;html&quot;
+ctx.accepts(&#39;text/html&#39;);
+// =&gt; &quot;text/html&quot;
+ctx.accepts(&#39;json&#39;, &#39;text&#39;);
+// =&gt; &quot;json&quot;
+ctx.accepts(&#39;application/json&#39;);
+// =&gt; &quot;application/json&quot;
+
+// Accept: text/*, application/json
+ctx.accepts(&#39;image/png&#39;);
+ctx.accepts(&#39;png&#39;);
+// =&gt; false
+
+// Accept: text/*;q=.5, application/json
+ctx.accepts([&#39;html&#39;, &#39;json&#39;]);
+ctx.accepts(&#39;html&#39;, &#39;json&#39;);
+// =&gt; &quot;json&quot;
+
+// No Accept header
+ctx.accepts(&#39;html&#39;, &#39;json&#39;);
+// =&gt; &quot;html&quot;
+ctx.accepts(&#39;json&#39;, &#39;html&#39;);
+// =&gt; &quot;json&quot;</code></pre>
+            <p> <code>this.accepts()</code> 可以被调用多次，或者使用 switch:</p>
+            <pre><code class="lang-js">switch (ctx.accepts(&#39;json&#39;, &#39;html&#39;, &#39;text&#39;)) {
+  case &#39;json&#39;: break;
+  case &#39;html&#39;: break;
+  case &#39;text&#39;: break;
+  default: ctx.throw(406, &#39;json, html, or text only&#39;);
+}</code></pre>
+            <h3 id="request-acceptsencodings-encodings-">request.acceptsEncodings(encodings)</h3>
+            <p> 检查 <code>encodings</code> 是否可以被接受，当为 <code>true</code> 时返回最佳匹配，否则返回 <code>false</code>。 注意：您应该在 encodings 中包含
+                <code>identity</code>。</p>
+            <pre><code class="lang-js">// Accept-Encoding: gzip
+ctx.acceptsEncodings(&#39;gzip&#39;, &#39;deflate&#39;, &#39;identity&#39;);
+// =&gt; &quot;gzip&quot;
+
+ctx.acceptsEncodings([&#39;gzip&#39;, &#39;deflate&#39;, &#39;identity&#39;]);
+// =&gt; &quot;gzip&quot;</code></pre>
+            <p>当没有传递参数时，返回包含所有可接受的 encodings 的数组：</p>
+            <pre><code class="lang-js">// Accept-Encoding: gzip, deflate
+ctx.acceptsEncodings();
+// =&gt; [&quot;gzip&quot;, &quot;deflate&quot;, &quot;identity&quot;]</code></pre>
+            <p> 注意：如果客户端直接发送 <code>identity;q=0</code> 时，<code>identity</code> encoding（表示no encoding） 可以不被接受。当这个方法返回<code>false</code>时，虽然这是一个边界情况，您仍然应该处理这种情况。</p>
+            <h3 id="request-acceptscharsets-charsets-">request.acceptsCharsets(charsets)</h3>
+            <p> 检查 <code>charsets</code> 是否可以被接受，如果为 <code>true</code> 则返回最佳匹配， 否则返回 <code>false</code>。</p>
+            <pre><code class="lang-js">// Accept-Charset: utf-8, iso-8859-1;q=0.2, utf-7;q=0.5
+ctx.acceptsCharsets(&#39;utf-8&#39;, &#39;utf-7&#39;);
+// =&gt; &quot;utf-8&quot;
+
+ctx.acceptsCharsets([&#39;utf-7&#39;, &#39;utf-8&#39;]);
+// =&gt; &quot;utf-8&quot;</code></pre>
+            <p> 当没有传递参数时， 返回包含所有可接受的 charsets 的数组：</p>
+            <pre><code class="lang-js">// Accept-Charset: utf-8, iso-8859-1;q=0.2, utf-7;q=0.5
+ctx.acceptsCharsets();
+// =&gt; [&quot;utf-8&quot;, &quot;utf-7&quot;, &quot;iso-8859-1&quot;]</code></pre>
+            <h3 id="request-acceptslanguages-langs-">request.acceptsLanguages(langs)</h3>
+            <p> 检查 <code>langs</code> 是否可以被接受，如果为 <code>true</code> 则返回最佳匹配，否则返回 <code>false</code>。</p>
+            <pre><code class="lang-js">// Accept-Language: en;q=0.8, es, pt
+ctx.acceptsLanguages(&#39;es&#39;, &#39;en&#39;);
+// =&gt; &quot;es&quot;
+
+ctx.acceptsLanguages([&#39;en&#39;, &#39;es&#39;]);
+// =&gt; &quot;es&quot;</code></pre>
+            <p> 当没有传递参数时，返回包含所有可接受的 langs 的数组：</p>
+            <pre><code class="lang-js">// Accept-Language: en;q=0.8, es, pt
+ctx.acceptsLanguages();
+// =&gt; [&quot;es&quot;, &quot;pt&quot;, &quot;en&quot;]</code></pre>
+            <h3 id="request-idempotent">request.idempotent</h3>
+            <p> 检查请求是否为幂等(idempotent)</p>
+            <h3 id="request-socket">request.socket</h3>
+            <p> 返回请求的socket。</p>
+            <h3 id="request-get-field-">request.get(field)</h3>
+            <p> 返回请求头</p>
+        </div>
+    </section>
+    <section>
+        <div class="content">
+            <h1 id="response">Response</h1>
+            <p>  Koa <code>Response</code> 对象是对 node 的 response 进一步抽象和封装，提供了日常 HTTP 服务器开发中一些有用的功能。</p>
+            <h2 id="api">API</h2>
+            <h3 id="response-header">response.header</h3>
+            <p> Response header 对象。</p>
+            <h3 id="response-headers">response.headers</h3>
+            <p> Response header 对象。等价于 <code>response.header</code>.</p>
+            <h3 id="response-socket">response.socket</h3>
+            <p> Request socket.</p>
+            <h3 id="response-status">response.status</h3>
+            <p>获取响应状态。 默认情况下，<code>response.status</code>设置为404，而不像node&#39;s <code>res.statusCode</code>默认为200。</p>
+           
+            <h3 id="response-status-">response.status=</h3>
+            <p> 通过数字设置响应状态:</p>
+            <ul>
+                <li>100 &quot;continue&quot;</li>
+                <li>101 &quot;switching protocols&quot;</li>
+                <li>102 &quot;processing&quot;</li>
+                <li>200 &quot;ok&quot;</li>
+                <li>201 &quot;created&quot;</li>
+                <li>202 &quot;accepted&quot;</li>
+                <li>203 &quot;non-authoritative information&quot;</li>
+                <li>204 &quot;no content&quot;</li>
+                <li>205 &quot;reset content&quot;</li>
+                <li>206 &quot;partial content&quot;</li>
+                <li>207 &quot;multi-status&quot;</li>
+                <li>208 &quot;already reported&quot;</li>
+                <li>226 &quot;im used&quot;</li>
+                <li>300 &quot;multiple choices&quot;</li>
+                <li>301 &quot;moved permanently&quot;</li>
+                <li>302 &quot;found&quot;</li>
+                <li>303 &quot;see other&quot;</li>
+                <li>304 &quot;not modified&quot;</li>
+                <li>305 &quot;use proxy&quot;</li>
+                <li>307 &quot;temporary redirect&quot;</li>
+                <li>308 &quot;permanent redirect&quot;</li>
+                <li>400 &quot;bad request&quot;</li>
+                <li>401 &quot;unauthorized&quot;</li>
+                <li>402 &quot;payment required&quot;</li>
+                <li>403 &quot;forbidden&quot;</li>
+                <li>404 &quot;not found&quot;</li>
+                <li>405 &quot;method not allowed&quot;</li>
+                <li>406 &quot;not acceptable&quot;</li>
+                <li>407 &quot;proxy authentication required&quot;</li>
+                <li>408 &quot;request timeout&quot;</li>
+                <li>409 &quot;conflict&quot;</li>
+                <li>410 &quot;gone&quot;</li>
+                <li>411 &quot;length required&quot;</li>
+                <li>412 &quot;precondition failed&quot;</li>
+                <li>413 &quot;payload too large&quot;</li>
+                <li>414 &quot;uri too long&quot;</li>
+                <li>415 &quot;unsupported media type&quot;</li>
+                <li>416 &quot;range not satisfiable&quot;</li>
+                <li>417 &quot;expectation failed&quot;</li>
+                <li>418 &quot;I&#39;m a teapot&quot;</li>
+                <li>422 &quot;unprocessable entity&quot;</li>
+                <li>423 &quot;locked&quot;</li>
+                <li>424 &quot;failed dependency&quot;</li>
+                <li>426 &quot;upgrade required&quot;</li>
+                <li>428 &quot;precondition required&quot;</li>
+                <li>429 &quot;too many requests&quot;</li>
+                <li>431 &quot;request header fields too large&quot;</li>
+                <li>500 &quot;internal server error&quot;</li>
+                <li>501 &quot;not implemented&quot;</li>
+                <li>502 &quot;bad gateway&quot;</li>
+                <li>503 &quot;service unavailable&quot;</li>
+                <li>504 &quot;gateway timeout&quot;</li>
+                <li>505 &quot;http version not supported&quot;</li>
+                <li>506 &quot;variant also negotiates&quot;</li>
+                <li>507 &quot;insufficient storage&quot;</li>
+                <li>508 &quot;loop detected&quot;</li>
+                <li>510 &quot;not extended&quot;</li>
+                <li>511 &quot;network authentication required&quot;</li>
+            </ul>
+            <p><strong>注意</strong>：不用担心记不住这些字符串，如果您设置错误，会有异常抛出，并列出该状态码表来帮助您进行更正。</p>
+            <h3 id="response-message">response.message</h3>
+            <p> 获取响应状态消息。默认情况下, <code>response.message</code>关联<code>response.status</code>。</p>
+            <h3 id="response-message-">response.message=</h3>
+            <p> 将响应状态消息设置为给定值。</p>
+            <h3 id="response-length-">response.length=</h3>
+            <p> 将响应Content-Length设置为给定值。</p>
+            <h3 id="response-length">response.length</h3>
+            <p><p>  如果 Content-Length 作为数值存在，或者可以通过 <code>ctx.body</code> 来进行计算，则返回相应数值，否则返回 <code>undefined</code>。</p></p>
+           
+            <h3 id="response-body">response.body</h3>
+            <p> 获取响应体。</p>
+            <h3 id="response-body-">response.body=</h3>
+            <p> 设置响应体为如下值:</p>
+            <ul>
+                <li><code>string</code> written</li>
+                <li><code>Buffer</code> written</li>
+                <li><code>Stream</code> piped</li>
+                <li><code>Object</code> || <code>Array</code> json-stringified</li>
+                <li><code>null</code> no content response</li>
+            </ul>
+            <p>  如果 <code>res.status</code> 没有赋值，Koa会自动设置为 <code>200</code> 或 <code>204</code>。</p>
+            <h4 id="string">String</h4>
+            <p>  Content-Type 默认为 text/html 或者 text/plain，两种默认 charset 均为 utf-8。 Content-Length 同时会被设置。</p>
+            <h4 id="buffer">Buffer</h4>
+            <p>  Content-Type 默认为 application/octet-stream，Content-Length同时被设置。</p>            <h4 id="stream">Stream</h4>
+            <p>  Content-Type 默认为 application/octet-stream。</p>
+            <p>当stream被设置为响应体时， <code>.onerror</code>将作为监听器自动添加到错误事件中以捕获任何错误。此外，每当请求被关闭（甚至更早）时，stream都将被销毁。如果不想要这两个功能，请不要直接将stream设置为响应体。例如，当将响应体设置为代理中的HTTP stream时，会破坏底层连接。</p>
+            
+            <p> 请查阅: <a href="https://github.com/koajs/koa/pull/612">https://github.com/koajs/koa/pull/612</a>来获取更多信息。</p>
+            <p> 以下是stream error处理的示例，并且不会自动销毁stream：</p>
+            <pre><code class="lang-js">const PassThrough = require(&#39;stream&#39;).PassThrough;
+
+app.use(async ctx =&gt; {
+  ctx.body = someHTTPStream.on(&#39;error&#39;, ctx.onerror).pipe(PassThrough());
+});</code></pre>
+            <h4 id="object">Object</h4>
+            Content-Type默认为application/json。 这包括普通对象<code>{ foo: &#39;bar&#39; }</code>和数组[&#39;foo&#39;, &#39;bar&#39;]</code>。
+
+            <h3 id="response-get-field-">response.get(field)</h3>
+            <p>  获取 response header 中字段值，field 不区分大小写。</p>
+            <pre><code class="lang-js">const etag = ctx.response.get(&#39;ETag&#39;);</code></pre>
+            <h3 id="response-set-field-value-">response.set(field, value)</h3>
+            <p>  设置 response header 字段 <code>field</code> 的值为 <code>value</code>。</p>
+            <pre><code class="lang-js">ctx.set(&#39;Cache-Control&#39;, &#39;no-cache&#39;);</code></pre>
+            <h3 id="response-append-field-value-">response.append(field, value)</h3>
+            <p>添加额外的字段<code>field</code> 的值为 <code>val</code></p>
+            <pre><code class="lang-js">ctx.append(&#39;Link&#39;, &#39;&lt;http://127.0.0.1/&gt;&#39;);</code></pre>
+            <h3 id="response-set-fields-">response.set(fields)</h3>
+            <p>  使用对象同时设置 response header 中多个字段的值。</p>
+            <pre><code class="lang-js">ctx.set({
+  &#39;Etag&#39;: &#39;1234&#39;,
+  &#39;Last-Modified&#39;: date
+});</code></pre>
+            <h3 id="response-remove-field-">response.remove(field)</h3>
+            <p>  移除 response header 中字段 <code>filed</code>。</p>
+            <h3 id="response-type">response.type</h3>
+            <p>  获取 response <code>Content-Type</code>，不包含像&quot;charset&quot;这样的参数。</p>
+
+            <pre><code class="lang-js">const ct = ctx.type;
+// =&gt; &quot;image/png&quot;</code></pre>
+            <h3 id="response-type-">response.type=</h3>
+            <p>  通过 mime 类型的字符串或者文件扩展名设置 response <code>Content-Type</code></p>
+            <pre><code class="lang-js">ctx.type = &#39;text/plain; charset=utf-8&#39;;
+ctx.type = &#39;image/png&#39;;
+ctx.type = &#39;.png&#39;;
+ctx.type = &#39;png&#39;;</code></pre>
+                <p>注意：当为你选择一个合适的<code>charset</code>时，例如<code>response.type = &#39;html&#39;</code>将默认为&quot;utf-8&quot。 如果需要覆盖<code>charset</code>，请使用<code>ctx.set(&#39;Content-Type&#39;, &#39;text/html&#39;)</code>直接设置响应头字段值。</p>
+            <h3 id="response-is-types-">response.is(types...)</h3>
+            <p> 跟<code>ctx.request.is()</code>非常类似。用来检查响应类型是否是所提供的类型之一。这对于创建操作响应的中间件特别有用。</p>
+            <p>例如，这是一个中间件，它可以缩小除stream以外的所有HTML响应。</p>
+            <pre><code class="lang-js">const minify = require(&#39;html-minifier&#39;);
+
+app.use(async (ctx, next) =&gt; {
+  await next();
+
+  if (!ctx.response.is(&#39;html&#39;)) return;
+
+  let body = ctx.body;
+  if (!body || body.pipe) return;
+
+  if (Buffer.isBuffer(body)) body = body.toString();
+  ctx.body = minify(body);
+});</code></pre>
+            <h3 id="response-redirect-url-alt-">response.redirect(url, [alt])</h3>
+            <p>  执行 [302] 重定向到对应 <code>url</code>。</p>
+            <p>  字符串 "back" 是一个特殊参数，其提供了 Referrer 支持。当没有Referrer时，使用 <code>alt</code> 或者 <code>/</code> 代替。</p>
+            <pre><code class="lang-js">ctx.redirect(&#39;back&#39;);
+ctx.redirect(&#39;back&#39;, &#39;/index.html&#39;);
+ctx.redirect(&#39;/login&#39;);
+ctx.redirect(&#39;http://google.com&#39;);</code></pre>
+            <p>  如果想要修改默认的 [302] 状态，直接在重定向之前或者之后执行即可。如果要修改 body，需要在重定向之前执行。</p>
+            <pre><code class="lang-js">ctx.status = 301;
+ctx.redirect(&#39;/cart&#39;);
+ctx.body = &#39;Redirecting to shopping cart&#39;;</code></pre>
+            <h3 id="response-attachment-filename-">response.attachment([filename])</h3>
+            <p>  设置 "attachment" 的 <code>Content-Disposition</code>，用于给客户端发送信号来提示下载。filename 为可选参数，用于指定下载文件名。</p>
+            <h3 id="response-headersent">response.headerSent</h3>
+            <p>  检查 response header 是否已经发送，用于在发生错误时检查客户端是否被通知。</p>
+            <h3 id="response-lastmodified">response.lastModified</h3>
+            <p>  如果存在 <code>Last-Modified</code>，则以 <code>Date</code> 的形式返回。</p>
+            <h3 id="response-lastmodified-">response.lastModified=</h3>
+            <p>  以 UTC 格式设置 <code>Last-Modified</code>。您可以使用 <code>Date</code> 或 date 字符串来进行设置。</p>
+            <pre><code class="lang-js">ctx.response.lastModified = new Date();</code></pre>
+            <h3 id="response-etag-">response.etag=</h3>
+            <p>  设置 包含 <code>"</code>s 的 ETag。注意没有对应的 <code>res.etag</code> 来获取其值。</p>
+            <pre><code class="lang-js">ctx.response.etag = crypto.createHash(&#39;md5&#39;).update(ctx.body).digest(&#39;hex&#39;);</code></pre>
+            <h3 id="response-vary-field-">response.vary(field)</h3>
+            <p> 不同于<code>field</code>.</p>
+            <h3 id="response-flushheaders-">response.flushHeaders()</h3>
+            <p> 刷新任何设置的响应头，并开始响应体。</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="content">
+            <h1 id="links">相关资源</h1>
+            <p>以下列出了更多第三方提供的 koa 中间件、完整实例、全面的帮助文档等。如果有问题，请加入我们的 IRC！
+            </p>
+            <ul>
+                <li><a href="https://github.com/koajs/koa">GitHub repository</a></li>
+                <li><a href="https://github.com/koajs/examples">Examples</a></li>
+                <li><a href="https://github.com/koajs/koa/wiki">Middleware</a></li>
+                <li><a href="https://github.com/koajs/koa/wiki">Wiki</a></li>
+                <li><a href="https://plus.google.com/communities/101845768320796750641">G+ Community</a></li>
+                <li><a href="https://groups.google.com/forum/#!forum/koajs">Mailing list</a></li>
+                <li><a href="https://github.com/koajs/koa/blob/master/docs/guide.md">Guide</a></li>
+                <li><a href="https://github.com/koajs/koa/blob/master/docs/faq.md">FAQ</a></li>
+                <li><strong>#koajs</strong> on freenode</li>
+            </ul>
+        </div>
+    </section>
+    <script>
+        hljs.initHighlightingOnLoad();
+    </script>
+</body>
+
+</html>
