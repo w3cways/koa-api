@@ -54,7 +54,7 @@ app.use(async ctx => {
 app.listen(3000);
 ```
 
-###级联
+### 级联
 
 Koa 的中间件通过一种更加传统（您也许会很熟悉）的方式进行级联，摒弃了以往 node 频繁的回调函数造成的复杂代码逻辑。 然而，使用异步函数，我们可以实现"真正" 的中间件。与之不同，当执行到 yield next 语句时，Koa 暂停了该中间件，继续执行下一个符合请求的中间件('downstrem')，然后控制权再逐级返回给上层中间件('upstream')。
 
@@ -90,7 +90,7 @@ app.use(async ctx => {
 
 app.listen(3000);
 ```
-###配置
+### 配置
 应用配置是 app 实例属性，目前支持的配置项如下：
 - app.env 默认为 NODE_ENV or "development"
 - app.proxy 如果为 true，则解析 "Host" 的 header 域，并支持 X-Forwarded-Host
